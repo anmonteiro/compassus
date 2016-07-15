@@ -17,7 +17,7 @@
   (-> app :config :root-class))
 
 (defn- make-root-class
-  [{:keys [routes wrapper history]}]
+  [{:keys [routes wrapper wrapper-class history]}]
   (let [route->query (into {}
                        (map (fn [[route class]]
                               (when (om/iquery? class)
@@ -29,7 +29,10 @@
     (ui
       static om/IQuery
       (query [this]
-        [::route {::route-data route->query}])
+        (let [q [::route {::route-data route->query}]]
+          (if wrapper-class
+            (conj q {::wrapper-data (om/get-query wrapper-class)})
+            q)))
       Object
       (componentDidMount [this]
         (when setup
@@ -41,11 +44,13 @@
         (let [props (om/props this)
               route (::route props)
               route-data (::route-data props)
+              wrapper-data (::wrapper-data props)
               factory (get route->factory route)]
           (if wrapper
             (wrapper {:owner   this
                       :factory factory
-                      :props   route-data})
+                      :props   route-data
+                      :wrapper-props wrapper-data})
             (factory route-data)))))))
 
 (defrecord ^:private CompassusApplication [config state])
@@ -150,6 +155,16 @@
   [{:keys [target ast route user-parser] :as env} key params]
   (let [query (infer-query env route)
         ret (user-parser env query target)]
+    (when-not (empty? ret)
+      {target (parser/expr->ast (first ret))})))
+
+(defmethod read [nil ::wrapper-data]
+  [{:keys [query user-parser] :as env} key params]
+  {:value (user-parser env query)})
+
+(defmethod read [:default ::wrapper-data]
+  [{:keys [target query user-parser] :as env} key params]
+  (let [ret (user-parser env query target)]
     (when-not (empty? ret)
       {target (parser/expr->ast (first ret))})))
 
