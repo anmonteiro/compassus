@@ -104,7 +104,7 @@
                       (om/component? x) om/get-reconciler)]
      (om/transact! reconciler (cond-> `[(set-route! {:route ~next-route})]
                                 queue?
-                                (into (om/transform-reads reconciler [::route-data])))))))
+                                (into (om/transform-reads reconciler [::route-data ::wrapper-data])))))))
 
 (defn- infer-query
   [{:keys [query]} route]
