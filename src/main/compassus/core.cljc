@@ -30,8 +30,8 @@
       static om/IQuery
       (query [this]
         (let [q [::route {::route-data route->query}]]
-          (if wrapper-class
-            (conj q {::wrapper-data (om/get-query wrapper-class)})
+          (if-let [query (om/get-query wrapper-class)]
+            (conj q {::wrapper-data query})
             q)))
       Object
       (componentDidMount [this]
