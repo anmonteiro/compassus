@@ -254,13 +254,13 @@
 (defn- process-reconciler-opts
   [{:keys [state parser migrate]
     :or {migrate #'om/default-migrate}
-    :as reconciler-opts} route->component index-route]
+    :as reconciler-opts} route->component index-route wrapper-query]
   (let [normalize? (not #?(:clj  (instance? clojure.lang.Atom state)
                            :cljs (satisfies? IAtom state)))
         route-info {::route index-route}
         state (if normalize?
-                (let [merged-query (transduce (map om/get-query)
-                                     (completing into) [] (vals route->component))]
+                (let [merged-query (into (or wrapper-query []) (mapcat om/get-query)
+                                     (vals route->component))]
                   (atom (merge (om/tree->db merged-query state true)
                                route-info)))
                 (doto state
@@ -310,10 +310,11 @@
                         application mounts and unmounts, respectively. Used to
                         set up / teardown browser history listeners.
    "
-  [{:keys [routes wrapper reconciler-opts] :as opts}]
+  [{:keys [routes wrapper-query reconciler-opts] :as opts}]
   (let [index-route (find-index-route routes)
         route->component (normalize-routes routes index-route)
-        reconciler-opts' (process-reconciler-opts reconciler-opts route->component index-route)
+        reconciler-opts' (process-reconciler-opts reconciler-opts route->component index-route
+                                                  wrapper-query)
         reconciler (om/reconciler reconciler-opts')
         opts' (merge opts {:routes route->component
                            :reconciler-opts reconciler-opts'})]
