@@ -25,14 +25,15 @@
                        routes)
         route->factory (zipmap (keys routes)
                                (map om/factory (vals routes)))
+        query [::route {::route-data route->query}]
+        query (if-let [wrapper-query (om/get-query wrapper-class)]
+                (conj query {::wrapper-data wrapper-query})
+                query)
         {:keys [setup teardown]} history]
     (ui
       static om/IQuery
       (query [this]
-        (let [q [::route {::route-data route->query}]]
-          (if-let [query (om/get-query wrapper-class)]
-            (conj q {::wrapper-data query})
-            q)))
+        query)
       Object
       (componentDidMount [this]
         (when setup
