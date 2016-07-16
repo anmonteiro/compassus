@@ -17,7 +17,7 @@
   (-> app :config :root-class))
 
 (defn- make-root-class
-  [{:keys [routes wrapper wrapper-class history]}]
+  [{:keys [routes wrapper wrapper-query history]}]
   (let [route->query (into {}
                        (map (fn [[route class]]
                               (when (om/iquery? class)
@@ -26,7 +26,7 @@
         route->factory (zipmap (keys routes)
                                (map om/factory (vals routes)))
         query [::route {::route-data route->query}]
-        query (if-let [wrapper-query (om/get-query wrapper-class)]
+        query (if wrapper-query
                 (conj query {::wrapper-data wrapper-query})
                 query)
         {:keys [setup teardown]} history]
