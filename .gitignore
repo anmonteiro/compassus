@@ -13,3 +13,6 @@ pom.xml.asc
 out/
 dist/
 *.DS_Store
+/.idea/
+/*.iml
+/project.clj
