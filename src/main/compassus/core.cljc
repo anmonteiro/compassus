@@ -54,10 +54,11 @@
         (let [props (om/props this)
               route (::route props)
               route-data (::route-data props)
+              mixin-data (::mixin-data props)
               factory (get route->factory route)]
           (wrap-render {:owner   this
                         :factory factory
-                        :props   route-data}))))))
+                        :props   (merge route-data mixin-data)}))))))
 
 (defrecord ^:private CompassusApplication [config state])
 
