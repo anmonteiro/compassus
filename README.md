@@ -23,8 +23,6 @@ Read the [announcement blog post](https://anmonteiro.com/2016/06/the-quest-for-a
 
 ## Installation
 
-### Stable
-
 Leiningen dependency information:
 
 ```clojure
@@ -40,6 +38,11 @@ Maven dependency information:
   <version>1.0.0-alpha2</version>
 </dependency>
 ```
+
+Template:
+
+There is a Boot / Leiningen [template](https://github.com/compassus/oriens) that
+provides the minimum boilerplate to help you get started with a Compassus project.
 
 ## Guide
 
@@ -434,8 +437,14 @@ Below are two examples, one using [Bidi](https://github.com/juxt/bidi) and
 
 (declare app)
 
+(defn update-route!
+  [{:keys [handler] :as route}]
+  (let [current-route (compassus/current-route app)]
+    (when (not= handler current-route)
+      (compassus/set-route! app handler))))
+
 (def history
-  (pushy/pushy #(compassus/set-route! app (:handler %))
+  (pushy/pushy update-route!
     (partial bidi/match-route bidi-routes)))
 
 (def app
