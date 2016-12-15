@@ -1,8 +1,8 @@
 (ns compassus.tests
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   (:require #?@(:cljs [[cljsjs.react]
-                       [goog.object :as gobj]])
-            #?@(:clj [[om.dom :as dom]])
+                       [goog.object :as gobj]]
+                :clj [[om.dom :as dom]])
             [clojure.core.async :refer [<! close! chan take! #?@(:clj [go <!!])]]
             [clojure.test :refer [deftest testing is are use-fixtures #?(:cljs async)]]
             [om.next :as om :refer [defui ui]]
@@ -27,11 +27,10 @@
 (defui Home
   static om/IQuery
   (query [this]
-         [:home/title :home/content])
-  Object
-  (render [this]
-          #?(:clj
-             (dom/div nil "Hello, home!"))))
+    [:home/title :home/content])
+  #?@(:clj [Object
+            (render [this]
+              (dom/div nil "Hello, home!"))]))
 
 (defui About
   static om/IQuery
