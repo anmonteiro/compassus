@@ -207,7 +207,7 @@
   [{:keys [ast user-parser] :as env} key params]
   (let [query [(parser/ast->expr ast)]
         ret (user-parser env query)]
-    {:value (get ret key)}))
+    {:value (get ret (:key ast))}))
 
 (defmethod read [:default :default]
   [{:keys [target ast route user-parser] :as env} key params]
