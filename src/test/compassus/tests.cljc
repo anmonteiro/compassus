@@ -1,6 +1,7 @@
 (ns compassus.tests
   #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   (:require #?@(:cljs [[cljsjs.react]
+                       [cljsjs.react.dom]
                        [goog.object :as gobj]]
                 :clj [[om.dom :as dom]])
             [clojure.core.async :refer [<! close! chan take! #?@(:clj [go <!!])]]
@@ -95,8 +96,9 @@
      :clj  (is (string? (-> (c/root-class *app*) meta :component-name)))))
 
 (deftest test-make-root-class
-  (let [root (#'c/make-root-class {:routes {:index Home
-                                            :about About}})]
+  (let [root (#'c/make-root-class (#'c/root-class-props
+                                    {:routes {:index Home
+                                              :about About}}))]
     (is (fn? root))
     #?(:cljs (is (true? (.. root -prototype -om$isComponent)))
        :clj  (is (string? (-> root meta :component-name))))
@@ -323,20 +325,20 @@
         r (c/get-reconciler app)]
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [[{:index (om/get-query Home)}]]}))
+           {:some-remote [{:index (om/get-query Home)}]}))
     (c/mount! app nil)
     (is (= (dissoc @(c/get-reconciler app) ::c/route) (select-keys init-state (om/get-query Home))))
     (is (= (om/gather-sends (#'om/to-env r)
              '[(fire/missiles! {:how-many 42})] [:some-remote])
-           {:some-remote ['[(fire/missiles! {:how-many 42})]]}))
+           {:some-remote '[(fire/missiles! {:how-many 42})]}))
     (c/set-route! app :about)
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [[{:about (om/get-query About)}]]}))
+           {:some-remote [{:about (om/get-query About)}]}))
     (c/set-route! app :other)
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [[{:other [:changed/key :updated/ast]}]]}))
+           {:some-remote [{:other [:changed/key :updated/ast]}]}))
     (om/transact! r '[(fire/missiles! {:how-many 3})])
     (test-async
       (go
@@ -474,7 +476,7 @@
          r (c/get-reconciler app)]
     (is (= (om/gather-sends (#'om/to-env r)
              '[(do/stuff! {:when :now})] [:remote])
-           {:remote ['[(do/stuff! {:when :later})]]}))
+           {:remote '[(do/stuff! {:when :later})]}))
     (is (empty? (om/gather-sends (#'om/to-env r)
                   '[(other/stuff!)] [:remote])))))
 
@@ -551,10 +553,10 @@
     (is (= (:app/title reread-ret2) "Some App"))
     (is (= (om/gather-sends (#'om/to-env r)
              '[(some/action!) :remote/key] [:remote])
-           {:remote [[:remote/key]]}))
+           {:remote [:remote/key]}))
     (is (= (om/gather-sends (#'om/to-env r)
              '[(some/action!) {:remote/key [:foo :bar]}] [:remote])
-           {:remote [[{:remote/key [:foo :bar]}]]}))))
+           {:remote [{:remote/key [:foo :bar]}]}))))
 
 (defui Person
   static om/Ident
@@ -760,13 +762,16 @@
               root (c/root-class app)
               c (c/mount! app :target)
               #?@(:clj [rendered (p/-render c)])
-              wrapper-props #?(:clj  (:omcljs$value (p/-props rendered))
+              wrapper-props #?(:clj  (-> rendered :props :omcljs$value)
                                :cljs (-> (.getRenderOutput shallow-renderer)
                                          (gobj/get "props") om/get-props om/unwrap))]
           (is (= (-> wrapper-props om/get-computed :props)
                  {:home/title "Home page"
                   :home/content "Lorem ipsum dolor sit amet."}))
-          (is (= (-> @parent-atom (get wrapper) om/react-type) root))
+          (let [wrapper-parent-class (-> @parent-atom (get wrapper) om/react-type)]
+            (is #?(:cljs (= wrapper-parent-class root)
+                   :clj (= (-> wrapper-parent-class meta :component-name)
+                           (-> root meta :component-name)))))
           (om/remove-root! (c/get-reconciler app) :target)))))
   (testing "lifecycle mixins"
     (let [update-atom (atom {})
@@ -847,7 +852,7 @@
              {::c/mixin-data [{:foo [:bar :baz]}]}]))
       (is (= (om/gather-sends (#'om/to-env r)
                (om/get-query root) [:some-remote])
-             {:some-remote [[{:foo [:bar :baz]}]]}))))
+             {:some-remote [{:foo [:bar :baz]}]}))))
   (testing "wrapper updates"
     (reset! update-atom {})
     (let [#?@(:cljs [shallow-renderer (.createRenderer test-utils)])
@@ -865,7 +870,7 @@
           root (c/root-class app)
           c (c/mount! app :target)
           #?@(:clj [wrapper (p/-render c)])
-          wrapper-props #?(:clj  (:omcljs$value (p/-props wrapper))
+          wrapper-props #?(:clj  (-> wrapper :props :omcljs$value)
                            :cljs (-> (.getRenderOutput shallow-renderer)
                                    (gobj/get "props") om/get-props om/unwrap))]
       (is (every? (partial contains? (om/get-computed wrapper-props)) [:owner :factory :props]))
@@ -984,18 +989,18 @@
         r (c/get-reconciler app)]
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [(om/get-query Home)]}))
+           {:some-remote (om/get-query Home)}))
     (c/mount! app nil)
     (is (= (dissoc @(c/get-reconciler app) ::c/route) {:home/title :title
                                                        :home/content :content}))
     (c/set-route! app :about)
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [(om/get-query About)]}))
+           {:some-remote (om/get-query About)}))
     (c/set-route! app :other)
     (is (= (om/gather-sends (#'om/to-env r)
              (om/get-query (c/root-class app)) [:some-remote])
-           {:some-remote [[:changed/key :foo :bar]]}))))
+           {:some-remote [:changed/key :foo :bar]}))))
 
 (defn compassus-16-read
   [{:keys [state query target ast] :as env} k _]
@@ -1084,7 +1089,7 @@
           root (c/root-class app)
           c (c/mount! app :target)
           #?@(:clj [wrapper (p/-render c)])
-          wrapper-props #?(:clj  (:omcljs$value (p/-props wrapper))
+          wrapper-props #?(:clj  (-> wrapper :props :omcljs$value)
                            :cljs (-> (.getRenderOutput shallow-renderer)
                                    (gobj/get "props") om/get-props om/unwrap))]
       (is (every? (partial contains? (om/get-computed wrapper-props)) [:owner :factory :props]))
