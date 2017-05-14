@@ -255,7 +255,9 @@
         p (-> r :config :parser)]
     (c/mount! app nil)
     (is (= {[:user/by-id 1] {:id 1 :name "Bob"}}
-           (p (:config r) [{[:user/by-id 1] (om/get-query User)}])))))
+           (p (#'om/to-env r) [{[:user/by-id 1] (om/get-query User)}])))
+    (is (= {:users/list [{:id 0 :name "Alice"} {:id 1 :name "Bob"}]}
+           (p (#'om/to-env r) [{[:users/list '_] (om/get-query User)}])))))
 
 (defmulti local-parser-read om/dispatch)
 (defmethod local-parser-read :index
