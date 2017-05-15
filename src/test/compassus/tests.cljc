@@ -1098,3 +1098,48 @@
                   :home/content "Lorem ipsum dolor sit amet."}))
       (is (= (dissoc wrapper-props ::om/computed)
              (om/get-computed wrapper-props))))))
+
+(defn compassus-29-local-read
+  [{:keys [state query]} k _]
+  (let [st @state]
+    {:remote true}))
+
+(defn compassus-29-remote-read
+  [_ k _]
+  {:value (cond-> posts-init-state
+            (= k :posts/list)
+            (get k))})
+
+(deftest test-compassus-29
+  (testing "Use current route's query in the send function"
+    (let [remote-parser (om/parser {:read compassus-29-remote-read})
+          app (c/application {:routes {:posts PostList}
+                              :reconciler
+                              (om/reconciler
+                                {:state {}
+                                 :merge c/compassus-merge
+                                 :send (fn [{:keys [remote]} cb]
+                                         (cb (remote-parser {} remote)))
+                                 :parser (c/parser {:read compassus-29-local-read})})})
+          r (c/get-reconciler app)]
+      (c/mount! app nil)
+      (is (contains? @r :posts/list))
+      (is (contains? @r :post/by-id))
+      (is (= (keys (:post/by-id @r)) [0 1]))
+      (is (= (:posts/list @r) [[:post/by-id 0] [:post/by-id 1]])))
+    (testing "works with `:route-dispatch false`"
+      (let [remote-parser (om/parser {:read compassus-29-remote-read})
+            app (c/application {:routes {:posts PostList}
+                                :reconciler
+                                (om/reconciler
+                                  {:state {}
+                                   :send (fn [{:keys [remote]} cb]
+                                           (cb (remote-parser {} remote)))
+                                   :parser (c/parser {:read compassus-29-local-read
+                                                      :route-dispatch false})})})
+            r (c/get-reconciler app)]
+        (c/mount! app nil)
+        (is (contains? @r :posts/list))
+        (is (contains? @r :post/by-id))
+        (is (= (keys (:post/by-id @r)) [0 1]))
+        (is (= (:posts/list @r) [[:post/by-id 0] [:post/by-id 1]]))))))

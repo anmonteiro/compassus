@@ -301,6 +301,19 @@
      (merge (select-keys app-state-pure [::route])
        (migrate app-state-pure query tempids id-key)))))
 
+(defn- wrap-send [send]
+  (fn [remotes cb]
+    (send remotes
+      (fn send-cb
+        ([resp]
+         (if (== (count remotes) 1)
+           (cb resp (-> remotes first second))
+           (cb resp)))
+        ([resp query]
+         (cb resp query))
+        ([resp query remote]
+         (cb resp query remote))))))
+
 (defn- wrap-merge [merge-fn route->component]
   (fn [reconciler state novelty query]
     (let [novelty-ks (into [] (remove symbol?) (keys novelty))]
@@ -347,7 +360,9 @@
             (swap! state merge route-info))
         new-cfg (merge cfg
                   {:migrate (make-migrate-fn migrate)
-                   :merge (wrap-merge (:merge cfg) route->component)})]
+                   :merge (wrap-merge (:merge cfg) route->component)}
+                  (when-not (nil? send)
+                    {:send (wrap-send send)}))]
     #?(:clj (swap! (:state reconciler) merge {:compassus$props root-class-props}))
     (assoc reconciler :config new-cfg)))
 
