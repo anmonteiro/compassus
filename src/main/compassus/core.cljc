@@ -285,13 +285,21 @@
    from the remote response and merges that into the state instead."
   [reconciler state res query]
   (let [route (get state ::route)
-        mutation? (symbol? (ffirst res))
-        query' (if-not mutation?
-                 (get (first query) route)
-                 query)]
+        read-response? (some (complement symbol?) (keys res))
+        query' (cond->> query
+                 (and (some? query) read-response?)
+                 (into [] (mapcat (fn [expr]
+                                    (cond-> expr
+                                      (and (util/join? expr)
+                                        (#?(:clj identical?
+                                            :cljs keyword-identical?)
+                                          (util/join-key expr) route))
+                                      util/join-value)))))]
     (om/default-merge reconciler state
-      (cond-> res
-        (not mutation?) (get route)) query')))
+      (if read-response?
+        (merge (dissoc res route) (get res route))
+        res)
+      query')))
 
 (defn- make-migrate-fn [migrate]
   (fn migrate-fn
